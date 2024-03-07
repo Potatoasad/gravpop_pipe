@@ -11,25 +11,59 @@ using LaTeXStrings
 
 database_folder = joinpath(homedir(), "Documents/Data/ringdb")
 db = Database(database_folder)
-
 event_list = readlines(joinpath(homedir(), "Documents/Data/selected_events_old.txt"))
 
-event = Event(db, event_list[1])
-post = event.posteriors()
-select!(post, :, [:spin_1x, :spin_1y, :spin_1z] => ByRow((x,y,z) -> sqrt(x^2 + y^2 + z^2)) => :chi_1)
-select!(post, :, [:spin_2x, :spin_2y, :spin_2z] => ByRow((x,y,z) -> sqrt(x^2 + y^2 + z^2)) => :chi_2)
-post = sample(post, 8000, [:mass_1_source, :mass_ratio, :chi_1, :chi_2, :redshift])
+### Some settings
+N_samples_to_fit_with = 8000
+N_samples_per_kernel = 1000
+variables = [:mass_1_source, :mass_ratio, :chi_1, :chi_2, :redshift]
+a = [2.0, 0.0, 0.0, 0.0, 0.0]
+b = [200.0, 1.0, 1.0, 1.0, 3.0]
 
-β = AnnealingSchedule(;β_max=1.5, dβ_rise=0.01, dβ_relax=0.01, N_high=20, N_post=200)
+settings = Dict(
+				:N_samples_to_fit_with => 8000,
+				:N_samples_per_kernel => 1000,
+				:N_components => 5,
+				:variables => [:mass_1_source, :mass_ratio, :chi_1, :chi_2, :redshift],
+				:sampling_variables => [:mass_1_source, :mass_ratio, :redshift],
+				:analytical_variables => [:chi_1, :chi_2],
+				:a => [2.0, 0.0, 0.0, 0.0, 0.0],
+				:b => [200.0, 1.0, 1.0, 1.0, 3.0]
+)
+
+z_max = 3.0
+priors = [
+		EuclidianDistancePrior(:redshift, z_max=z_max),
+		DetectorFrameMassesPrior(),
+		FromSecondaryToMassRatio([:mass_1_source])
+	]
+
+prior = ProductPrior(priors)
+
+β_schedule = AnnealingSchedule(;β_max=1.5, dβ_rise=0.01, dβ_relax=0.01, N_high=20, N_post=200)
 
 transformation = Transformation(
 	[:mass_1_source, :mass_ratio, :chi_1, :chi_2, :redshift],
-	(m1,q,χ1,χ2,z) -> (m1*to_chirp_mass(q)*(1+z),  q,χ1,χ2,z),
+	(m1,q,χ1,χ2,z) -> (m1*to_chirp_mass(q)*(1+z), q,χ1,χ2,z),
 	[:chirp_mass_det, :mass_ratio, :chi_1, :chi_2, :redshift],
-	(M1,q,χ1,χ2,z) -> (M1/(to_chirp_mass(q)*(1+z)),  q,χ1,χ2,z)
+	(M1,q,χ1,χ2,z) -> (M1/(to_chirp_mass(q)*(1+z)), q,χ1,χ2,z),
+	[:prior]
 )
 
-mix, df = fit_gmm(post, 5, [2.0, 0.0, 0.0, 0.0, 0.0], [100.0, 1.0, 1.0, 1.0, 3.0], transformation, β; progress=true, cov=:diag)
-fig = compare_distributions(forward(transformation, post), mix, columns=[L"M_{chirp}^{det}", L"q", L"\chi_1", L"\chi_2", L"z"])
-fig
+event_dictionaries = []
+
+using ProgressMeter
+
+@showprogress for event_name ∈ event_list
+	event = Event(db, event_name)
+	the_dict = grab_event_data(event, prior, transformation, β_schedule, settings)
+	push!(event_dictionaries, the_dict)
+end
+
+
+save_list_of_dicts_to_hdf5(event_dictionaries, event_list, joinpath(homedir(), "Documents/Data/event_data.h5"))
+
+
+
+
 

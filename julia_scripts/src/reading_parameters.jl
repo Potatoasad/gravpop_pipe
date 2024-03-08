@@ -10,3 +10,4 @@ database_location 		   = conf._data["datasources"]["database_location"][1][2:(en
 
 db = Database(database_location)
 events = readlines(event_name_list)
+

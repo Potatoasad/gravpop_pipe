@@ -26,3 +26,19 @@ class Inference:
 		selection_data = load_hdf5_to_jax_dict(selection_data_filename)
 		selection_data = selection_data["selection"]
 		return cls(variables, sampled_models, analytic_models, event_data, selection_data)
+
+@dataclass
+class InferenceStandard:
+	models : List[AbstractPopulationModel]
+	event_data: Dict[str, jax.Array]
+	selection_data: Dict[str, jax.Array]
+
+	## Save data as an HDF5 with variable specifications, transformations and etc on both selection and events
+	## Use data for inference with this class
+	
+	@classmethod
+	def from_file(cls, event_data_filename, selection_data_filename, models):
+		event_data = stack_nested_jax_arrays(load_hdf5_to_jax_dict(event_data_filename))
+		selection_data = load_hdf5_to_jax_dict(selection_data_filename)
+		selection_data = selection_data["selection"]
+		return cls(models, event_data, selection_data)

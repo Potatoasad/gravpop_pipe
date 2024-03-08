@@ -45,7 +45,7 @@ compare_distributions(df[!, [:mass_1_source, :mass_ratio, :chi_1, :chi_2, :redsh
 sampling_variables = [:mass_1_source, :mass_ratio, :redshift]
 analytical_variables = [:chi_1, :chi_2]
 variables = [:mass_1_source, :mass_ratio, :chi_1, :chi_2, :redshift]
-the_dictionary = post_process_event_fit(df, mix, sampling_variables, analytical_variables, variables; N_samples_per_kernel=1000)
+the_dictionary = post_process_event_fit(df, mix, sampling_variables, analytical_variables, variables; N_samples_per_kernel=4_000)
 
 
 using HDF5
@@ -57,7 +57,6 @@ function save_dict_to_file(filename, the_dictionary; group_name="selection")
     end
 end
 
-
-julia_scripts.save_dict_to_file(joinpath(homedir(), "Documents/Data/selection_function.h5"), the_dictionary)
+save_dict_to_file(joinpath(homedir(), "Documents/Data/selection_function.h5"), the_dictionary)
 
 

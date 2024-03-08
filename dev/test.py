@@ -18,12 +18,12 @@ I = Inference.from_file(
 					event_data_filename = filename,
 					selection_data_filename = selection_filename,
 					sampled_models = [SM,R],
-					analytic_models = [S1,S2]
+					analytic_models = []
 					)
 
 HL = HybridPopulationLikelihood(
 								 sampled_models  = [SM, R],
-							     analytic_models =  [S1, S2],
+							     analytic_models =  [],
 							     event_data = I.event_data,
 							     selection_data = I.selection_data
 							     )
@@ -56,10 +56,10 @@ priors = dict(
     mpp 	= dist.Uniform(10,80),
     sigpp 	= dist.Uniform(2,10),
     delta_m = dist.Uniform(0,5),
-    mu_1 	= dist.Uniform(0,1),
-    sigma_1 = dist.Uniform(0,3),
-    mu_2 	= dist.Uniform(0,1),
-    sigma_2 = dist.Uniform(0,3),
+#    mu_1 	= dist.Uniform(0,1),
+#    sigma_1 = dist.Uniform(0,3),
+#    mu_2 	= dist.Uniform(0,1),
+#    sigma_2 = dist.Uniform(0,3),
     lamb 	= dist.Uniform(-8,8)
 )
 
@@ -72,24 +72,71 @@ latex_symbols = dict(
     mpp 	= r"$\mu_{m}$",
     sigpp 	= r"$\sigma_{m}$",
     delta_m = r"$\delta_m$",
-    mu_1 	= r"$\mu_1$",
-    sigma_1 = r"$\sigma_1$",
-    mu_2 	= r"$\mu_2$",
-    sigma_2 = r"$\sigma_2$",
+#    mu_1 	= r"$\mu_1$",
+#    sigma_1 = r"$\sigma_1$",
+#    mu_2 	= r"$\mu_2$",
+#    sigma_2 = r"$\sigma_2$",
     lamb 	= r"$\kappa$"
 )
 
 
 print(HL.logpdf(Lambda_0))
 
-sampler = Sampler(
+"""sampler = Sampler(
     priors = priors,
     latex_symbols = latex_symbols,
     likelihood = HL,
     num_samples = 20,
     num_warmup = 200,
     target_accept_prob = 0.6
+)"""
+
+
+#sampler.sample()
+
+
+priors = dict(
+    alpha   = dist.Uniform(-1,6),
+    lam     = dist.Uniform( 0,1),
+    mmin    = dist.Uniform( 2,20),
+    mmax    = dist.Uniform(80,100),
+    beta    = dist.Uniform(-1,5),
+    mpp     = dist.Uniform(10,80),
+    sigpp   = dist.Uniform(2,10),
+    delta_m = dist.Uniform(0,5),
+#    mu_1   = dist.Uniform(0,1),
+#    sigma_1 = dist.Uniform(0,3),
+#    mu_2   = dist.Uniform(0,1),
+#    sigma_2 = dist.Uniform(0,3),
+    #lamb    = dist.Uniform(-8,8)
+)
+
+latex_symbols = dict(
+    alpha   = r"$\alpha$",
+    lam     = r"$\lambda$",
+    mmin    = r"$m_{min}$",
+    mmax    = r"$m_{max}$",
+    beta    = r"$\beta$",
+    mpp     = r"$\mu_{m}$",
+    sigpp   = r"$\sigma_{m}$",
+    delta_m = r"$\delta_m$",
+#    mu_1   = r"$\mu_1$",
+#    sigma_1 = r"$\sigma_1$",
+#    mu_2   = r"$\mu_2$",
+#    sigma_2 = r"$\sigma_2$",
+#    lamb    = r"$\kappa$"
 )
 
 
-sampler.sample()
+
+
+HL = HybridPopulationLikelihood(sampled_models=[R], event_data=I.event_data, analytic_models=[], selection_data=I.selection_data)
+
+print(HL.logpdf(Lambda_0))
+
+Samp = Sampler(priors = {'lamb' : dist.Uniform(-8,8)}, 
+                latex_symbols = {'lamb' : r'$\lamb$'} , 
+                likelihood=HL, num_samples=2000, num_warmup=1000)
+
+
+#Samp.sample()

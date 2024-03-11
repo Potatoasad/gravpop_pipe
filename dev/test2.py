@@ -42,19 +42,19 @@ Lambda_0 = dict(
 
 import numpyro.distributions as dist
 priors = dict(
-	alpha 	= dist.Uniform(3,4),
+	alpha 	= dist.Uniform(0,5),
     lam 	= dist.Uniform(0,1),
-    mmin 	= dist.Uniform(5,6),
-    mmax 	= dist.Uniform(95,100),
-    beta 	= dist.Uniform(0,2),
-    mpp 	= dist.Uniform(30,40),
-    sigpp 	= dist.Uniform(3,5),
-    delta_m = dist.Uniform(0,1),
+    mmin 	= dist.Uniform(2,10),
+    mmax 	= dist.Uniform(60,100),
+    beta 	= dist.Uniform(-1,5),
+    mpp 	= dist.Uniform(10,60),
+    sigpp 	= dist.Uniform(2,10),
+    delta_m = dist.Uniform(0,5),
 #    mu_1 	= dist.Uniform(0,1),
 #    sigma_1 = dist.Uniform(0,3),
 #    mu_2 	= dist.Uniform(0,1),
 #    sigma_2 = dist.Uniform(0,3),
-    lamb 	= dist.Uniform(2,4)
+    lamb 	= dist.Uniform(-6,6)
 )
 
 latex_symbols = dict(
@@ -84,8 +84,60 @@ sampler = Sampler(
 
 print(HL.logpdf(Lambda_0))
 
-import numpyro
-numpyro.validation_enabled(True)
-numpyro.enable_validation(True)
+#import numpyro
+#numpyro.validation_enabled(True)
+#numpyro.enable_validation(True)
 
-sampler.sample()
+#sampler.sample()
+
+from jax import jacfwd
+def model_gradient(model, data, param, canonical_parameter_order=None):
+	canonical_parameter_order = canonical_parameter_order or list(param.keys())
+
+	def make_vector(d):
+		return jnp.array([d[param] for param in canonical_parameter_order])
+
+	def make_dictionary(x):
+		return {parameter : x[i] for i,parameter in enumerate(canonical_parameter_order)}
+
+	dYdx = jacfwd(lambda x: model(data, make_dictionary(x)))(make_vector(param))
+	if len(canonical_parameter_order) == 1:
+		return {parameter : dYdx.flatten() for i,parameter in enumerate(canonical_parameter_order)}
+
+	return {parameter : dYdx[..., i] for i,parameter in enumerate(canonical_parameter_order)}
+
+def likelihood_gradient(likelihood, param, canonical_parameter_order=None):
+	canonical_parameter_order = canonical_parameter_order or list(param.keys())
+
+	def make_vector(d):
+		return jnp.array([d[param] for param in canonical_parameter_order])
+
+	def make_dictionary(x):
+		return {parameter : x[i] for i,parameter in enumerate(canonical_parameter_order)}
+
+	dYdx = jacfwd(lambda x: likelihood.logpdf(make_dictionary(x)))(make_vector(param))
+	if len(canonical_parameter_order) == 1:
+		return {parameter : dYdx.flatten() for i,parameter in enumerate(canonical_parameter_order)}
+
+	return {parameter : dYdx[..., i] for i,parameter in enumerate(canonical_parameter_order)}
+
+
+Lambda_0 =  {'alpha': 3.5, 'beta': 1.1, 'mmin': 5, 'mmax': 90, 
+             'mpp': 35, 'sigpp': 3, 'lam': 0.4, 'lamb':2.9, 'delta_m':3}
+
+derivatives = model_gradient(SM, I.selection_data, Lambda_0)
+print(not jnp.any(jnp.array([jnp.any(jnp.isnan(derivatives[x])) for x in derivatives.keys()])))
+
+derivatives = likelihood_gradient(HL, Lambda_0)
+print(not jnp.any(jnp.array([jnp.any(jnp.isnan(derivatives[x])) for x in derivatives.keys()])))
+
+
+
+
+
+
+result = sampler.sample()
+post = sampler.samples
+post.to_csv(f"./samples_output.csv")
+fig = sampler.corner()
+fig.save_fig("./test.png")

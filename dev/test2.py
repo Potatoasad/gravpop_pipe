@@ -4,8 +4,8 @@ import jax
 import jax.numpy as jnp
 
 # Example usage:
-filename = '/Users/asadh/Documents/Data/event_data2.h5'
-selection_filename = '/Users/asadh/Documents/Data/selection_function2.h5'
+filename = '/Users/asadh/Documents/Data/event_data_from_pickle.h5'
+selection_filename = '/Users/asadh/Documents/Data/selection_function_fixed.h5'
 data = load_hdf5_to_jax_dict(filename)
 
 SM = SmoothedTwoComponentPrimaryMassRatio(primary_mass_name="mass_1_source")
@@ -77,9 +77,9 @@ sampler = Sampler(
     priors = priors,
     latex_symbols = latex_symbols,
     likelihood = HL,
-    num_samples = 200,
+    num_samples = 2000,
     num_warmup = 200,
-    target_accept_prob = 0.7
+    target_accept_prob = 0.6
 )
 
 print(HL.logpdf(Lambda_0))
@@ -140,4 +140,4 @@ result = sampler.sample()
 post = sampler.samples
 post.to_csv(f"./samples_output.csv")
 fig = sampler.corner()
-fig.save_fig("./test.png")
+fig.savefig("./test.png")

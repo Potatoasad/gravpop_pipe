@@ -20,12 +20,13 @@ N_samples_to_fit_with = 30_000
 ## Implement Cuts
 df_detected = implement_cuts(df_selections; ifar_threshold = 1, snr_threshold = 11, m_min = 2.0, m_max=100.0, z_max = 3.0)
 rename!(df_detected, :mass1_source  => :mass_1_source)
-rename!(df_detected, :sampling_pdf  => :prior)
+#rename!(df_detected, :sampling_pdf  => :prior) <-this  is wrong!!
+select!(df_detected, :, [:sampling_pdf, :mass_1_source] => ByRow((p,m1) -> p*m1) => :prior)
 selection_samples = sample(df_detected, N_samples_to_fit_with, columns)
 
 selection_dict = Dict()
 for column ∈ columns
-	selection_dict[column] = df[!, column]
+	selection_dict[column] = selection_samples[!, column]
 end
 
 using HDF5
@@ -37,7 +38,7 @@ function save_dict_to_file(filename, the_dictionary; group_name="selection")
     end
 end
 
-save_dict_to_file(joinpath(homedir(), "Documents/Data/selection_function2.h5"), selection_dict)
+save_dict_to_file(joinpath(homedir(), "Documents/Data/selection_function_fixed.h5"), selection_dict)
 
 
 
@@ -45,9 +46,14 @@ save_dict_to_file(joinpath(homedir(), "Documents/Data/selection_function2.h5"), 
 
 
 
-database_folder = joinpath(homedir(), "Documents/Data/ringdb")
-db = Database(database_folder)
-event_list = readlines(joinpath(homedir(), "Documents/Data/selected_events_old.txt"))
+#database_folder = joinpath(homedir(), "Documents/Data/ringdb")
+#db = Database(database_folder)
+#event_list = readlines(joinpath(homedir(), "Documents/Data/selected_events_old.txt"))
+
+#database_folder = joinpath(homedir(), "Documents/Data/ringdb")
+#db = Database(database_folder)
+#event_list = readlines(joinpath(homedir(), "Documents/Data/posterior_names.txt"))
+db = GWPopPosteriorFile("/Users/asadh/Documents/Data/posteriors.pkl","/Users/asadh/Documents/Data/posterior_names.txt")
 
 z_max = 3.0
 priors = [
@@ -63,26 +69,33 @@ N_samples_to_fit_with = 1_000
 using ProgressMeter
 
 event_dictionaries = []
+event_list = String[]
+@showprogress for (event_name, post) ∈ db.posteriors
+	#event = Event(db, event_name)
+	#post = event.posteriors()
+	#select!(post, :, :mass_1 => ByRow(x -> x) => :mass_1_source)
+	rename!(post, :mass_1 => :mass_1_source)
+	rename!(post, :a_1 => :chi_1)
+	rename!(post, :a_2 => :chi_2)
+	#select!(post, :, [:spin_1x, :spin_1y, :spin_1z] => ByRow((x,y,z) -> sqrt(x^2 + y^2 + z^2)) => :chi_1)
+	#select!(post, :, [:spin_2x, :spin_2y, :spin_2z] => ByRow((x,y,z) -> sqrt(x^2 + y^2 + z^2)) => :chi_2)
 
-@showprogress for event_name ∈ event_list
-	event = Event(db, event_name)
-	post = event.posteriors()
-	select!(post, :, [:spin_1x, :spin_1y, :spin_1z] => ByRow((x,y,z) -> sqrt(x^2 + y^2 + z^2)) => :chi_1)
-	select!(post, :, [:spin_2x, :spin_2y, :spin_2z] => ByRow((x,y,z) -> sqrt(x^2 + y^2 + z^2)) => :chi_2)
 
-	post = sample(post, N_samples_to_fit_with, variables)
+	post = sample(post, N_samples_to_fit_with, columns)
 
 	### Evaluate Prior on event posterior samples
-	evaluate!(post, prior, :prior)
+	evaluate!(post, prior, :prior_ringdb)
 
 	the_dict = Dict()
 	for col ∈ columns
 		the_dict[col] = post[!, col]
 	end
+	the_dict[:prior_ringdb] = post[!, :prior_ringdb]
 	push!(event_dictionaries, the_dict)
+	push!(event_list, event_name)
 end
 
 
-save_list_of_dicts_to_hdf5(event_dictionaries, event_list, joinpath(homedir(), "Documents/Data/event_data2.h5"))
+save_list_of_dicts_to_hdf5(event_dictionaries, event_list, joinpath(homedir(), "Documents/Data/event_data_from_pickle.h5"))
 
 

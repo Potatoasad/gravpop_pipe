@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>INI File Editor</title>
+<style>
+    label {
+        display: block;
+        margin-bottom: 5px;
+    }
+</style>
+</head>
+<body>
+    <h1>INI File Editor</h1>
+    <form id="iniForm">
+        <fieldset>
+            <legend>DataSources</legend>
+            <label for="eventList">event_list</label>
+            <input type="text" id="eventList" name="event_list">
+            <label for="databaseLocation">database_location</label>
+            <input type="text" id="databaseLocation" name="database_location">
+            <label for="selectionFunctionSamples">selection_function_samples</label>
+            <input type="text" id="selectionFunctionSamples" name="selection_function_samples">
+        </fieldset>
+
+        <fieldset>
+            <legend>Events.Variables</legend>
+            <!-- Repeat similar pattern for other sections -->
+        </fieldset>
+
+        <!-- Add more fieldsets for other sections -->
+
+        <button type="button" onclick="saveIniFile()">Save INI File</button>
+    </form>
+
+    <script>
+        function saveIniFile() {
+            const form = document.getElementById('iniForm');
+            const formData = new FormData(form);
+            let iniContent = '';
+
+            for (const [name, value] of formData) {
+                iniContent += `[${name}]\n`;
+                value.split('\n').forEach(line => {
+                    iniContent += `${line.trim()}\n`;
+                });
+            }
+
+            // Download INI file
+            const blob = new Blob([iniContent], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'config.ini';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+    </script>
+</body>
+</html>

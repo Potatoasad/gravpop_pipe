@@ -17,6 +17,22 @@ def load_hdf5_to_jax_dict(filename):
             data[event_name] = event_data
     return data
 
+def load_hdf5_attributes(filename):
+    data = {}
+    with h5py.File(filename, 'r') as f:
+        for group_name, group in f.items():
+            group_data = {}
+            for attr_name, attr_value in group.attrs.items():
+                # Check the datatype of the attribute value
+                if isinstance(attr_value, bytes):
+                    # If it's bytes, decode it to string
+                    group_data[attr_name] = attr_value.decode("utf-8")
+                else:
+                    # Otherwise, store it as is
+                    group_data[attr_name] = attr_value
+            data[group_name] = group_data
+    return data
+
 
 def stack_nested_jax_arrays(data):
     stacked_data = {}

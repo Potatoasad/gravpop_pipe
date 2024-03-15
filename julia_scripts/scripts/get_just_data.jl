@@ -14,11 +14,13 @@ columns = [:mass_1_source, :mass_ratio, :chi_1, :chi_2, :redshift, :prior]
 ## Get Data
 catalog = O1_O2_O3_sensitivity(path)
 df_selections = get_injections(catalog)
+analysis_time = get_analysis_time(catalog)
+total_generated = get_total_generated(catalog)
 
 N_samples_to_fit_with = 30_000
 
 ## Implement Cuts
-df_detected = implement_cuts(df_selections; ifar_threshold = 1, snr_threshold = 11, m_min = 2.0, m_max=100.0, z_max = 3.0)
+df_detected = implement_cuts(df_selections; ifar_threshold = 1, snr_threshold = 11, m_min = 2.0, m_max=100.0, z_max = 1.9)
 rename!(df_detected, :mass1_source  => :mass_1_source)
 #rename!(df_detected, :sampling_pdf  => :prior) <-this  is wrong!!
 select!(df_detected, :, [:sampling_pdf, :mass_1_source] => ByRow((p,m1) -> p*m1) => :prior)
@@ -35,17 +37,19 @@ function save_dict_to_file(filename, the_dictionary; group_name="selection")
 	h5open(filename, "w") do file
         group = create_group(file, group_name)
         save_dict_to_group(group, the_dictionary)
+        write_attribute(group, "analysis_time", analysis_time)
+        write_attribute(group, "total_generated", total_generated)
     end
 end
 
-save_dict_to_file(joinpath(homedir(), "Documents/Data/selection_function_fixed.h5"), selection_dict)
+save_dict_to_file(joinpath(homedir(), "Documents/Data/selection_function_fixed_z_max_1p9.h5"), selection_dict)
 
 
 
 
 
 
-
+"""
 #database_folder = joinpath(homedir(), "Documents/Data/ringdb")
 #db = Database(database_folder)
 #event_list = readlines(joinpath(homedir(), "Documents/Data/selected_events_old.txt"))
@@ -55,7 +59,7 @@ save_dict_to_file(joinpath(homedir(), "Documents/Data/selection_function_fixed.h
 #event_list = readlines(joinpath(homedir(), "Documents/Data/posterior_names.txt"))
 db = GWPopPosteriorFile("/Users/asadh/Documents/Data/posteriors.pkl","/Users/asadh/Documents/Data/posterior_names.txt")
 
-z_max = 3.0
+z_max = 1.9
 priors = [
 		EuclidianDistancePrior(:redshift, z_max=z_max),
 		DetectorFrameMassesPrior(),
@@ -98,4 +102,4 @@ end
 
 save_list_of_dicts_to_hdf5(event_dictionaries, event_list, joinpath(homedir(), "Documents/Data/event_data_from_pickle.h5"))
 
-
+"""

@@ -5,11 +5,11 @@ import jax.numpy as jnp
 
 # Example usage:
 filename = '/Users/asadh/Documents/Data/event_data_from_pickle.h5'
-selection_filename = '/Users/asadh/Documents/Data/selection_function_fixed.h5'
+selection_filename = '/Users/asadh/Documents/Data/selection_function_fixed_z_max_1p9.h5'
 data = load_hdf5_to_jax_dict(filename)
 
 SM = SmoothedTwoComponentPrimaryMassRatio(primary_mass_name="mass_1_source")
-R = PowerLawRedshift()
+R = PowerLawRedshift(z_max=1.9)
 
 I = InferenceStandard.from_file(
 					event_data_filename = filename,
@@ -42,19 +42,19 @@ Lambda_0 = dict(
 
 import numpyro.distributions as dist
 priors = dict(
-	alpha 	= dist.Uniform(0,5),
+	alpha 	= dist.Uniform(-4,12),
     lam 	= dist.Uniform(0,1),
     mmin 	= dist.Uniform(2,10),
-    mmax 	= dist.Uniform(60,100),
-    beta 	= dist.Uniform(-1,5),
-    mpp 	= dist.Uniform(10,60),
-    sigpp 	= dist.Uniform(2,10),
-    delta_m = dist.Uniform(0,5),
+    mmax 	= dist.Uniform(70,100),
+    beta 	= dist.Uniform(-2,7),
+    mpp 	= dist.Uniform(20,50),
+    sigpp 	= dist.Uniform(1,10),
+    delta_m = dist.Uniform(0,12),
 #    mu_1 	= dist.Uniform(0,1),
 #    sigma_1 = dist.Uniform(0,3),
 #    mu_2 	= dist.Uniform(0,1),
 #    sigma_2 = dist.Uniform(0,3),
-    lamb 	= dist.Uniform(-6,6)
+    lamb 	= dist.Uniform(-10,10)
 )
 
 latex_symbols = dict(
@@ -77,12 +77,13 @@ sampler = Sampler(
     priors = priors,
     latex_symbols = latex_symbols,
     likelihood = HL,
-    num_samples = 2000,
+    num_samples = 8000,
     num_warmup = 200,
-    target_accept_prob = 0.6
+    target_accept_prob = 0.6,
+    just_prior = False
 )
 
-print(HL.logpdf(Lambda_0))
+#print(HL.logpdf(Lambda_0))
 
 #import numpyro
 #numpyro.validation_enabled(True)
@@ -121,23 +122,25 @@ def likelihood_gradient(likelihood, param, canonical_parameter_order=None):
 
 	return {parameter : dYdx[..., i] for i,parameter in enumerate(canonical_parameter_order)}
 
+"""
 
-Lambda_0 =  {'alpha': 3.5, 'beta': 1.1, 'mmin': 5, 'mmax': 90, 
+Lambda_0 =  {'alpha': 3.5, 'beta': -1.1, 'mmin': 5, 'mmax': 90, 
              'mpp': 35, 'sigpp': 3, 'lam': 0.4, 'lamb':2.9, 'delta_m':3}
 
 derivatives = model_gradient(SM, I.selection_data, Lambda_0)
-print(not jnp.any(jnp.array([jnp.any(jnp.isnan(derivatives[x])) for x in derivatives.keys()])))
+print(f"For the point Λ₀ given by {Lambda_0}")
+print("Mass models have no nans in their inferred gradients: ", not jnp.any(jnp.array([jnp.any(jnp.isnan(derivatives[x])) for x in derivatives.keys()])))
 
 derivatives = likelihood_gradient(HL, Lambda_0)
-print(not jnp.any(jnp.array([jnp.any(jnp.isnan(derivatives[x])) for x in derivatives.keys()])))
+print("likelihood has no nans in its inferred gradients: ", not jnp.any(jnp.array([jnp.any(jnp.isnan(derivatives[x])) for x in derivatives.keys()])))
 
-
+"""
 
 
 
 
 result = sampler.sample()
 post = sampler.samples
-post.to_csv(f"./samples_output.csv")
+post.to_csv(f"./samples_output.csv", index=False)
 fig = sampler.corner()
 fig.savefig("./test.png")

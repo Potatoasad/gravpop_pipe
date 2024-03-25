@@ -4,24 +4,25 @@ import jax
 import jax.numpy as jnp
 
 # Example usage:
-filename = '/Users/asadh/Documents/Data/event_data_from_pickle.h5'
+#filename = '/Users/asadh/Documents/Data/event_data_from_pickle.h5'
+filename = '/Users/asadh/Documents/Data/posteriors.pkl'
 selection_filename = '/Users/asadh/Documents/Data/selection_function_fixed_z_max_1p9.h5'
-data = load_hdf5_to_jax_dict(filename)
+#data = load_hdf5_to_jax_dict(filename)
 
 SM = SmoothedTwoComponentPrimaryMassRatio(primary_mass_name="mass_1_source")
 R = PowerLawRedshift(z_max=1.9)
+S_mag = BetaSpinMagnitudeIID(var_names = ['chi_1', 'chi_2'], parameterization='mu_sigma',  
+							 hyper_var_names=['mu_chi', 'sigma_chi', 'amax'])
+S_tilt = GaussianIsotropicSpinOrientationsIID(var_names = ['cos_tilt_1', 'cos_tilt_2'])
 
-I = InferenceStandard.from_file(
+HL = PopulationLikelihood.from_file(
 					event_data_filename = filename,
 					selection_data_filename = selection_filename,
-					models = [SM,R]
+					models = [SM,R,S_mag,S_tilt],
+					enforce_convergence=False,
+					samples_per_event=5000
 					)
 
-HL = PopulationLikelihood(
-						 models  = [SM, R],
-					     event_data = I.event_data,
-					     selection_data = I.selection_data
-					     )
 
 Lambda_0 = dict(
 	alpha = 3.5,
@@ -50,6 +51,10 @@ priors = dict(
     mpp 	= dist.Uniform(20,50),
     sigpp 	= dist.Uniform(1,10),
     delta_m = dist.Uniform(0,12),
+    mu_chi = dist.Uniform(0,1),
+    sigma_chi = dist.Uniform(0.005,0.25),
+    xi_spin = dist.Uniform(0,1),
+    sigma_spin = dist.Uniform(0.3, 5) ,
 #    mu_1 	= dist.Uniform(0,1),
 #    sigma_1 = dist.Uniform(0,3),
 #    mu_2 	= dist.Uniform(0,1),
@@ -66,6 +71,10 @@ latex_symbols = dict(
     mpp 	= r"$\mu_{m}$",
     sigpp 	= r"$\sigma_{m}$",
     delta_m = r"$\delta_m$",
+    mu_chi = r"$\mu_{\chi}$",
+    sigma_chi = r"$\sigma_{\chi}$",
+    xi_spin = r"$\xi_{spin}$",
+    sigma_spin = r"$\sigma_{spin}$" ,
 #    mu_1 	= r"$\mu_1$",
 #    sigma_1 = r"$\sigma_1$",
 #    mu_2 	= r"$\mu_2$",
@@ -79,7 +88,7 @@ sampler = Sampler(
     likelihood = HL,
     num_samples = 8000,
     num_warmup = 200,
-    target_accept_prob = 0.6,
+    target_accept_prob = 0.7,
     just_prior = False
 )
 

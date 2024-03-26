@@ -117,15 +117,16 @@ class Report:
         for model in model_list:
             cols += convert_to_list(self.parsers[0].config_dict['Variables']['Population'][model])
         return self.create_corner(colnames=cols)
-            
+
     def save_image(self, filename=None):
         from matplotlib.backends.backend_pdf import PdfPages
         if filename is None:
-            if 'plots' in self.config_dict['Output']:
-                output_plot_location = self.config_dict['Output']['plots']
+            if 'plots' in self.parsers[0].config_dict['Output']:
+                output_plot_location = self.parsers[0].config_dict['Output']['plots']
             else:
                 output_plot_location = "./output.pdf"
-        p = PdfPages(filename) 
+        print(f"Creating a PDF at {output_plot_location}")
+        p = PdfPages(output_plot_location) 
         
         #figs = [plt.figure(n) for n in fig_nums] 
         figs = []
@@ -133,7 +134,7 @@ class Report:
         figs.append(self.create_redshift_plot())
         figs.append(self.create_spin_magnitude_plot())
         figs.append(self.create_corner_for_models(['mass', 'redshift']))
-        figs.append(self.create_corner_for_models(['spin_magnitude']))
+        figs.append(self.create_corner_for_models(['spin_magnitude', 'spin_orientation']))
         figs.append(self.create_corner())
 
         # iterating over the numbers in list 

@@ -24,9 +24,9 @@ df_detected = implement_cuts(df_selections; ifar_threshold = 1, snr_threshold = 
 rename!(df_detected, :mass1_source  => :mass_1_source)
 #rename!(df_detected, :sampling_pdf  => :prior) <-this  is wrong!!
 select!(df_detected, :, [:sampling_pdf, :mass_1_source] => ByRow((p,m1) -> p*m1) => :prior)
-#select!(df_detected, :, [:prior, :chi_1] => ByRow((p,χ₁) -> p*2π*χ₁^2) => :prior)
-#select!(df_detected, :, [:prior, :chi_2] => ByRow((p,χ₂) -> p*2π*χ₂^2) => :prior)
-selection_samples = sample(df_detected, N_samples_to_fit_with, columns)
+select!(df_detected, :, [:prior, :chi_1] => ByRow((p,χ₁) -> p*2π*χ₁^2) => :prior)
+select!(df_detected, :, [:prior, :chi_2] => ByRow((p,χ₂) -> p*2π*χ₂^2) => :prior)
+selection_samples = df_detected[!, columns] #sample(df_detected, N_samples_to_fit_with, columns)
 
 selection_dict = Dict()
 for column ∈ columns
@@ -44,7 +44,7 @@ function save_dict_to_file(filename, the_dictionary; group_name="selection")
     end
 end
 
-save_dict_to_file(joinpath(homedir(), "Documents/Data/selection_function_fixed_z_max_1p9_no_spin_jacobian.h5"), selection_dict)
+save_dict_to_file(joinpath(homedir(), "Documents/Data/selection_function_fixed_z_max_1p9_all_samples.h5"), selection_dict)
 
 
 

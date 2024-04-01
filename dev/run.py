@@ -2,7 +2,7 @@ from gravpop_pipe import *
 
 
 if __name__ == '__main__':
-	P = Parser("/Users/asadh/Documents/GitHub/gravpop_pipe/tests/model.ini")
+	P = Parser("/Users/asadh/Documents/GitHub/gravpop_pipe/tests/hybrid_model.ini")
 
 	P.run()
 

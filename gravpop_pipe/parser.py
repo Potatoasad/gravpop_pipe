@@ -39,7 +39,7 @@ class Parser:
 		self.hyper_parameters = hyper_params
 		
 	def get_list_of_models(self, model_dict):
-		models = self.models
+		models = model_dict# or self.models
 		return [models[m] for m in self.default_model_order if m in models] + list([v for m,v in models.items() if m not in self.default_model_order])
 		
 
@@ -60,16 +60,33 @@ class Parser:
 				new_names[model] = model_call.replace(')',  f', var_names={var_names}, hyper_var_names={hyper_var_names})')
 				
 		return {key: eval(value) for key, value in new_names.items()}
+
+	@property
+	def sampled_models(self):
+		models = self.models
+		return {key : model for key, model in models.items() if isinstance(model, SampledPopulationModel)}
+
+	@property
+	def analytic_models(self):
+		models = self.models
+		return {key : model for key, model in models.items() if isinstance(model, AnalyticPopulationModel)}
 	
 	@property
 	def likelihood(self):
 		if self._likelihood is None:
 			likelihood_items = {key:eval(value) for key, value in self.config_dict['Likelihood'].items()}
 			cls = likelihood_items.pop('type', PopulationLikelihood)
-			self._likelihood = cls.from_file(event_data_filename=self.config_dict['DataSources']['event_data'],
-											 selection_data_filename=self.config_dict['DataSources']['selection_data'], 
-											 models=self.get_list_of_models(self.models),
-											 **likelihood_items)
+			if cls == PopulationLikelihood:
+				self._likelihood = cls.from_file(event_data_filename=self.config_dict['DataSources']['event_data'],
+												 selection_data_filename=self.config_dict['DataSources']['selection_data'], 
+												 models=self.get_list_of_models(self.models),
+												 **likelihood_items)
+			elif cls == HybridPopulationLikelihood:
+				self._likelihood = cls.from_file(event_data_filename=self.config_dict['DataSources']['event_data'],
+												 selection_data_filename=self.config_dict['DataSources']['selection_data'], 
+												 sampled_models=self.get_list_of_models(self.sampled_models),
+												 analytic_models=self.get_list_of_models(self.analytic_models),
+												 **likelihood_items)
 			
 		return self._likelihood
 	

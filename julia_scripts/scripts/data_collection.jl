@@ -15,7 +15,7 @@ event_list = readlines(joinpath(homedir(), "Documents/Data/selected_events_old.t
 
 ### Some settings
 N_samples_to_fit_with = 8000
-N_samples_per_kernel = 1000
+N_samples_per_kernel = 2000
 variables = [:mass_1_source, :mass_ratio, :chi_1, :chi_2, :redshift]
 a = [2.0, 0.0, 0.0, 0.0, 0.0]
 b = [200.0, 1.0, 1.0, 1.0, 3.0]

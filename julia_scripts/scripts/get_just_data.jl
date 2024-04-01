@@ -51,57 +51,58 @@ save_dict_to_file(joinpath(homedir(), "Documents/Data/selection_function_fixed_z
 
 
 
-"""
-#database_folder = joinpath(homedir(), "Documents/Data/ringdb")
-#db = Database(database_folder)
-#event_list = readlines(joinpath(homedir(), "Documents/Data/selected_events_old.txt"))
+
+database_folder = joinpath(homedir(), "Documents/Data/ringdb")
+db = Database(database_folder)
+event_list = readlines(joinpath(homedir(), "Documents/Data/selected_events_old.txt"))
 
 #database_folder = joinpath(homedir(), "Documents/Data/ringdb")
 #db = Database(database_folder)
 #event_list = readlines(joinpath(homedir(), "Documents/Data/posterior_names.txt"))
-db = GWPopPosteriorFile("/Users/asadh/Documents/Data/posteriors.pkl","/Users/asadh/Documents/Data/posterior_names.txt")
+#db = GWPopPosteriorFile("/Users/asadh/Documents/Data/posteriors.pkl","/Users/asadh/Documents/Data/posterior_names.txt")
 
 z_max = 1.9
 priors = [
-		EuclidianDistancePrior(:redshift, z_max=z_max),
+		EuclidianDistancePrior(:redshift, z_max=3.0),
 		DetectorFrameMassesPrior(),
 		FromSecondaryToMassRatio([:mass_1_source])
 	]
 
 prior = ProductPrior(priors)
 
-N_samples_to_fit_with = 1_000
+N_samples_to_fit_with = 3_500
 
 using ProgressMeter
 
 event_dictionaries = []
-event_list = String[]
-@showprogress for (event_name, post) ∈ db.posteriors
-	#event = Event(db, event_name)
-	#post = event.posteriors()
+event_list_out = String[]
+#@showprogress for (event_name, post) ∈ db.posteriors
+@showprogress for event_name ∈ event_list
+	event = Event(db, event_name)
+	post = event.posteriors()
 	#select!(post, :, :mass_1 => ByRow(x -> x) => :mass_1_source)
-	rename!(post, :mass_1 => :mass_1_source)
-	rename!(post, :a_1 => :chi_1)
-	rename!(post, :a_2 => :chi_2)
-	#select!(post, :, [:spin_1x, :spin_1y, :spin_1z] => ByRow((x,y,z) -> sqrt(x^2 + y^2 + z^2)) => :chi_1)
-	#select!(post, :, [:spin_2x, :spin_2y, :spin_2z] => ByRow((x,y,z) -> sqrt(x^2 + y^2 + z^2)) => :chi_2)
-
-
-	post = sample(post, N_samples_to_fit_with, columns)
+	#rename!(post, :mass_1 => :mass_1_source)
+	#rename!(post, :mass_1_source => :mass_1)
+	#rename!(post, :a_1 => :chi_1)
+	#rename!(post, :a_2 => :chi_2)
+	select!(post, :, [:spin_1x, :spin_1y, :spin_1z] => ByRow((x,y,z) -> sqrt(x^2 + y^2 + z^2)) => :chi_1)
+	select!(post, :, [:spin_2x, :spin_2y, :spin_2z] => ByRow((x,y,z) -> sqrt(x^2 + y^2 + z^2)) => :chi_2)
+	#rename!(post, :chi_1 => :a_1)
+	#rename!(post, :chi_2 => :a_2)
 
 	### Evaluate Prior on event posterior samples
-	evaluate!(post, prior, :prior_ringdb)
+	evaluate!(post, prior, :prior)
+
+	post = sample(post, N_samples_to_fit_with, columns)
 
 	the_dict = Dict()
 	for col ∈ columns
 		the_dict[col] = post[!, col]
 	end
-	the_dict[:prior_ringdb] = post[!, :prior_ringdb]
+	the_dict[:prior] = post[!, :prior]
 	push!(event_dictionaries, the_dict)
-	push!(event_list, event_name)
+	push!(event_list_out, event_name)
 end
 
 
-save_list_of_dicts_to_hdf5(event_dictionaries, event_list, joinpath(homedir(), "Documents/Data/event_data_from_pickle.h5"))
-
-"""
+save_list_of_dicts_to_hdf5(event_dictionaries, event_list_out, joinpath(homedir(), "Documents/Data/event_data_march_31.h5"))

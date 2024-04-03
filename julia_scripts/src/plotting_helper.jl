@@ -27,11 +27,11 @@ end
 make_df(x::Distributions.Distribution; columns=:auto, N=8000) = DataFrame(collect(rand(x, N)'), columns)
 make_df(x::DataFrames.DataFrame; columns=:auto, N=8000) = rename(x[rand(1:nrow(x), N), :], Dict([col => label for (col, label) ∈ zip(names(x), columns)]))
 
-function compare_distributions(dist1, dist2; columns=:auto)
+function compare_distributions(dist1, dist2; columns=:auto, figsize=(1200,1200))
 	X1 = make_df(dist1; columns=columns, N=8000)
 	X2 = make_df(dist2; columns=columns, N=8000)#DataFrame(collect(rand(dist2, 8000)'), names(X1))
 
-	@show names(X1), names(X2)
+	#@show names(X1), names(X2)
 
 	if columns isa Symbol
 		columns = Dict([Symbol(s) => s for s in names(X1)])
@@ -43,7 +43,7 @@ function compare_distributions(dist1, dist2; columns=:auto)
 	rename!(X2, Dict([x => Symbol(x) for x ∈ names(X2)]))
 
 
-	fig = Figure()
+	fig = Figure(size=figsize)
 	gs = GridLayout(fig[1,1])
 
 	c1, c2 = Makie.wong_colors(0.5)[1:2]

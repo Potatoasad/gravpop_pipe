@@ -28,6 +28,8 @@ df_detected = implement_cuts(df_selections; ifar_threshold = 1, snr_threshold = 
 rename!(df_detected, :mass1_source  => :mass_1_source)
 #rename!(df_detected, :sampling_pdf  => :prior)
 select!(df_detected, :, [:sampling_pdf, :mass_1_source] => ByRow((p,m1) -> p*m1) => :prior)
+select!(df_detected, :, [:prior, :chi_1] => ByRow((p,χ₁) -> p*2π*χ₁^2) => :prior)
+select!(df_detected, :, [:prior, :chi_2] => ByRow((p,χ₂) -> p*2π*χ₂^2) => :prior)
 selection_samples = sample(df_detected, N_samples_to_fit_with, columns)
 
 ## Set up fitting procedure

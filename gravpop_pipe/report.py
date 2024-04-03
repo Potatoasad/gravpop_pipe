@@ -81,8 +81,8 @@ class Report:
                           
             
         ax2.legend()
-        ax1.set_aspect(aspect / max(max_1s))
-        ax2.set_aspect(aspect / max(max_2s))
+        #ax1.set_aspect(aspect)
+        #ax2.set_aspect(aspect)
 
         plt.legend()
         return fig
@@ -125,7 +125,7 @@ class Report:
         plt.legend()
         return fig
     
-    def create_corner(self, colnames=None, resample=True):
+    def create_corner(self, colnames=None, resample=True, only_first=False):
         import corner
         colnames = colnames or self.parsers[0].hyper_parameters
         latex_colnames = [self.parsers[0].latex_names[x] for x in colnames]
@@ -136,30 +136,31 @@ class Report:
             hyper_posterior_sampled_dfs = [parser.hyper_posterior.posterior for parser in self.parsers]
         fig = corner.corner(hyper_posterior_sampled_dfs[0][colnames].values, 
                             labels=latex_colnames, color=self.color_assigner[0], show_titles=True)
-        
-        for i in range(1,len(self.parsers)):
-            corner.corner(hyper_posterior_sampled_dfs[i][colnames].values, fig=fig, labels=latex_colnames, color=self.color_assigner[i])
-        
-        import matplotlib.lines as mlines
-        the_lines = []
-        for i in range(len(self.parsers)):
-            a_line = mlines.Line2D([], [], color=self.color_assigner[i], label=self.names[i])
-            the_lines.append(a_line)
 
-        plt.legend(handles=the_lines, bbox_to_anchor=(0., 1.5, 1., .0), loc=4, fontsize="20")
+        if not only_first:
+            for i in range(1,len(self.parsers)):
+                corner.corner(hyper_posterior_sampled_dfs[i][colnames].values, fig=fig, labels=latex_colnames, color=self.color_assigner[i])
+            
+            import matplotlib.lines as mlines
+            the_lines = []
+            for i in range(len(self.parsers)):
+                a_line = mlines.Line2D([], [], color=self.color_assigner[i], label=self.names[i])
+                the_lines.append(a_line)
+
+            plt.legend(handles=the_lines, bbox_to_anchor=(0., 1.5, 1., .0), loc=4, fontsize="20")
         return fig
     
-    def create_mass_redshift_corner(self):
+    def create_mass_redshift_corner(self, only_first=False):
         mass_vars = convert_to_list(self.parsers[0].config_dict['Variables']['Population']['mass'])
         redshift_vars = convert_to_list(self.parsers[0].config_dict['Variables']['Population']['redshift'])
         cols = mass_vars + redshift_vars
-        return self.create_corner(colnames=cols)
+        return self.create_corner(colnames=cols, only_first=only_first)
     
-    def create_corner_for_models(self, model_list=['mass', 'redshift']):
+    def create_corner_for_models(self, model_list=['mass', 'redshift'], only_first=False):
         cols = []
         for model in model_list:
             cols += convert_to_list(self.parsers[0].config_dict['Variables']['Population'][model])
-        return self.create_corner(colnames=cols)
+        return self.create_corner(colnames=cols, only_first=only_first)
 
     def save_image(self, filename=None):
         from matplotlib.backends.backend_pdf import PdfPages
@@ -180,13 +181,50 @@ class Report:
         
         #figs = [plt.figure(n) for n in fig_nums] 
         figs = []
-        has_mass_plots and figs.append(self.create_mass_plot())
-        has_redshift_plots and figs.append(self.create_redshift_plot())
-        has_spin_magnitude_plots and figs.append(self.create_spin_magnitude_plot())
-        has_spin_orientation_plots and figs.append(self.create_spin_orientation_plot())
-        has_mass_plots and has_redshift_plots and figs.append(self.create_corner_for_models(['mass', 'redshift']))
-        has_spin_orientation_plots and has_spin_magnitude_plots and figs.append(self.create_corner_for_models(['spin_magnitude', 'spin_orientation']))
-        figs.append(self.create_corner())
+        try:
+            has_mass_plots and figs.append(self.create_mass_plot())
+        except Exception as e:
+            print(f"Skipping Mass Plots, got the error {repr(e)}")
+
+        try:
+            has_redshift_plots and figs.append(self.create_redshift_plot())
+        except Exception as e:
+            print(f"Skipping Redshift Plots, got the error {repr(e)}")
+        try:
+            has_spin_magnitude_plots and figs.append(self.create_spin_magnitude_plot())
+        except Exception as e:
+            print(f"Skipping Spin Magnitude Plots, got the error {repr(e)}")
+        try:
+            has_spin_orientation_plots and figs.append(self.create_spin_orientation_plot())
+        except Exception as e:
+             print(f"Skipping Spin Orientation Plots, got the error {repr(e)}")
+        try:
+            has_mass_plots and has_redshift_plots and figs.append(self.create_corner_for_models(['mass', 'redshift']))
+        except Exception as e:
+            print(f"Skipping Mass Redshift Corner Plots, got the error {repr(e)}")
+            print("Attempting a seperate plot")
+            try:
+                figs.append(self.create_corner_for_models(['mass', 'redshift'], only_first=True))
+            except Exception as e:
+                print(f"Skipping Mass Redshift Corner Plots, got the error {repr(e)}")
+        try:
+            has_spin_orientation_plots and has_spin_magnitude_plots and figs.append(self.create_corner_for_models(['spin_magnitude', 'spin_orientation']))
+        except Exception as e:
+            print(f"Skipping Spin Corner Plots, got the error {repr(e)}")
+            print("Attempting a seperate plot")
+            try:
+                figs.append(self.create_corner_for_models(['spin_magnitude', 'spin_orientation'], only_first=True))
+            except Exception as e:
+                print(f"Skipping Spin Corner Plots, got the error {repr(e)}")
+        try:
+            figs.append(self.create_corner())
+        except Exception as e:
+            print(f"Skipping Full Corner plot got the error {repr(e)}")
+            print(f"Attempting a seperate Full corner plot")
+            try:
+                figs.append(self.create_corner(only_first=True))
+            except Exception as e:
+                print(f"Skipping Full Corner Plots, got the error {repr(e)}")
 
         # iterating over the numbers in list 
         for fig in figs:

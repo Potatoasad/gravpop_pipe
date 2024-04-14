@@ -41,7 +41,16 @@ class Parser:
 	def get_list_of_models(self, model_dict):
 		models = model_dict# or self.models
 		return [models[m] for m in self.default_model_order if m in models] + list([v for m,v in models.items() if m not in self.default_model_order])
-		
+
+	@property
+	def name(self):
+	    default_name = "gravpop"
+	    if 'Name' in self.config_dict:
+	        name = self.config_dict['Name'].get('run_name', default_name)
+	    else:
+	        name = default_name
+
+	    return name
 
 	@property
 	def save_locations(self):

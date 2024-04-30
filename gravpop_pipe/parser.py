@@ -2,6 +2,8 @@ import re
 import configparser
 from gravpop import *
 import pandas as pd
+import jax
+import jax.numpy as jnp
 
 def config_to_dict(config):
 	config_dict = {}
@@ -37,6 +39,8 @@ class Parser:
 		for p in params:
 		    hyper_params += p
 		self.hyper_parameters = hyper_params
+		self.ignore_events = convert_to_list(self.config_dict['DataSources']['ignore_events'])
+		self.check_gradient = False
 		
 	def get_list_of_models(self, model_dict):
 		models = model_dict# or self.models
@@ -88,13 +92,14 @@ class Parser:
 			if cls == PopulationLikelihood:
 				self._likelihood = cls.from_file(event_data_filename=self.config_dict['DataSources']['event_data'],
 												 selection_data_filename=self.config_dict['DataSources']['selection_data'], 
-												 models=self.get_list_of_models(self.models),
+												 models=self.get_list_of_models(self.models), #ignore_events=self.ignore_events,
 												 **likelihood_items)
 			elif cls == HybridPopulationLikelihood:
 				self._likelihood = cls.from_file(event_data_filename=self.config_dict['DataSources']['event_data'],
 												 selection_data_filename=self.config_dict['DataSources']['selection_data'], 
 												 sampled_models=self.get_list_of_models(self.sampled_models),
 												 analytic_models=self.get_list_of_models(self.analytic_models),
+												 ignore_events=self.ignore_events,
 												 **likelihood_items)
 			
 		return self._likelihood
@@ -118,10 +123,21 @@ class Parser:
 	def constraints(self):
 		if 'Constraints' in self.config_dict:
 			return [eval(a) for a in self.config_dict['Constraints'].values()]
+
+	def test_likelihood(self, check_gradient=False):
+		## Compile Likelihood
+		random_prior_point = {col : self.priors[col].sample(jax.random.key(np.random.randint(100))) for col in self.priors.keys()}
+		print("Compiling Likelihood ...")
+		print(f"Will evaluate at {random_prior_point}")
+		print("Test Likelihood Evaluation : logpdf = ",  self.likelihood.logpdf(random_prior_point))
+		if check_gradient:
+			print("Compiling Likelihood gradient evaluation")
+			print("Gradient at that point is : d(logpdf(x))/dx = ",  jax.jacrev(lambda x: self.likelihood.logpdf(x))(random_prior_point))
 	
 	@property
 	def sampler(self):
 		if self._sampler is None:
+
 			kwargs = {key:eval(value) for key, value in self.config_dict['Sampler'].items()}
 			self._sampler = Sampler(priors = self.priors,
 									constraints = self.constraints,
@@ -152,6 +168,7 @@ class Parser:
 
 	def run(self, samples_save_location=None):
 		samples_save_location = samples_save_location or self.save_locations.get('samples', None)
+		self.test_likelihood(check_gradient=True)
 		self.sampler.sample()
 		self.sampler.samples.to_csv(samples_save_location, index=False)
 		print(f"Samples saved at {samples_save_location}")

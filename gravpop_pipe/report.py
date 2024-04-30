@@ -6,6 +6,7 @@ from .parser import *
 import numpy as np
 import matplotlib.pyplot as plt
 
+
 @dataclass
 class Report:
     parsers : List[Any]
@@ -124,6 +125,9 @@ class Report:
 
         plt.legend()
         return fig
+
+    def create_spin_magnitude_2D_plot_for_primary(self, dpi=200):
+        return self.parsers[0].hyper_posterior.spin_magnitude_plot.spin_2D_plot(quantiles=[0.1, 0.5, 0.9], dpi=dpi);
     
     def create_corner(self, colnames=None, resample=True, only_first=False):
         import corner
@@ -194,6 +198,10 @@ class Report:
             has_spin_magnitude_plots and figs.append(self.create_spin_magnitude_plot())
         except Exception as e:
             print(f"Skipping Spin Magnitude Plots, got the error {repr(e)}")
+        try:
+            has_spin_magnitude_plots and figs.append(self.create_spin_magnitude_2D_plot_for_primary())
+        except Exception as e:
+            print(f"Skipping Spin Magnitude 2D Plot for the first result, got the error {repr(e)}")
         try:
             has_spin_orientation_plots and figs.append(self.create_spin_orientation_plot())
         except Exception as e:

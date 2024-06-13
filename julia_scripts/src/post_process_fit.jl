@@ -7,6 +7,9 @@ function post_process_event_fit(df, mix, sampling_variables, analytical_variable
 	for variable ∈ sampling_variables
 		the_dict[variable] = Vector{Float64}[]
 	end
+	for variable ∈ analytical_variables
+		the_dict[variable] = Vector{Float64}[]
+	end
 	the_dict[:prior] = Vector{Float64}[]
 
 	for df_component ∈ groupby(df, :components)
@@ -14,10 +17,17 @@ function post_process_event_fit(df, mix, sampling_variables, analytical_variable
 		for variable ∈ sampling_variables
 			push!(the_dict[variable], X[!, variable])
 		end
+		for variable ∈ analytical_variables
+			push!(the_dict[variable], X[!, variable])
+		end
 		push!(the_dict[:prior], X[!, :prior])
 	end
 
 	for variable ∈ sampling_variables
+		the_dict[variable] = hcat(the_dict[variable]...)
+	end
+
+	for variable ∈ analytical_variables
 		the_dict[variable] = hcat(the_dict[variable]...)
 	end
 	the_dict[:prior] = hcat(the_dict[:prior]...)
@@ -70,6 +80,8 @@ function grab_event_data(event, prior, transformation, β_schedule, settings)
 
 	### Set up gaussian mixture model
 	mix, df = fit_gmm(post, N_components, a, b, transformation, β_schedule; progress=false, cov=:diag)
+
+	print(names(df))
 
 	### Post process TGMM for hybrid scheme
 	event_data_dictionary = post_process_event_fit(df, mix, sampling_variables, analytical_variables, variables; N_samples_per_kernel=N_samples_per_kernel)

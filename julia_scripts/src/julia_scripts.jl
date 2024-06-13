@@ -3,11 +3,12 @@ module julia_scripts
 import TruncatedGaussianMixtures
 import TruncatedGaussianMixtures: AbstractSchedule
 using TruncatedGaussianMixtures
-import RingDB: AbstractTransformation, image_columns
+#import RingDB: AbstractTransformation, image_columns
 using RingDB
 using DataFrames, Distributions
 using HDF5
 
+""""
 function sample(df::AbstractDataFrame, N::Int)
 	df[rand(1:nrow(df),N),:]
 end
@@ -66,6 +67,7 @@ function TruncatedGaussianMixtures.fit_gmm(df::DataFrame, K, a, b, Tr::AbstractT
 	df_out[!, :components] = assignments
 	EM.mix, df_out
 end
+"""
 
 include("./post_process_fit.jl")
 include("./plotting_helper.jl")

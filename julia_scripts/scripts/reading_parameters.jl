@@ -2,6 +2,7 @@ using Pkg
 env_dir = join(split(@__FILE__, "/")[1:(end-2)], "/")
 Pkg.activate(env_dir)
 
+#using Revise
 using ConfParser
 using ArgParse
 using DataFrames, LaTeXStrings
@@ -116,7 +117,7 @@ truncation_b = [limit[2] for limit in truncation_limits]
 forward_transformation = config_dict["events"]["prefittransformation"]["transformation_function"] |> x->join(x,",") |> Meta.parse |> eval
 inverse_transformation = config_dict["events"]["prefittransformation"]["inverse_transformation_function"] |> x->join(x,",") |> Meta.parse |> eval
 
-transformation = RingDB.Transformation(
+transformation = TruncatedGaussianMixtures.Transformation(
 	variable_names,
 	forward_transformation,
 	transformed_variable_names,
@@ -165,7 +166,7 @@ end
 final_df = vcat((@showprogress [get_samples(Event(db, event_name), N_samples_to_fit_with, variable_names) for event_name ∈ event_list])...)
 @show describe(final_df)
 final_df[!, :prior] .= 1.0
-@show describe(RingDB.forward(transformation, final_df))
+@show describe(forward(transformation, final_df))
 
 @showprogress for event_name ∈ event_list
 	event = Event(db, event_name)
@@ -173,34 +174,42 @@ final_df[!, :prior] .= 1.0
 	push!(event_dictionaries, the_dict)
 end
 
+#println(event_dictionaries)
+#println(event_list[1:2])
+#println(event_data_output_location)
+
 save_list_of_dicts_to_hdf5(event_dictionaries, event_list, event_data_output_location)
 
 ############# DEBUG PLOTS ########################
-event_data_plot_location = conf._data["datasources"]["event_data_plots"][1][2:(end-1)]
+if "event_data_plots" in keys(conf._data["datasources"])	
+	event_data_plot_location = conf._data["datasources"]["event_data_plots"][1][2:(end-1)]
 
-using PDFmerger: append_pdf!
-CairoMakie.activate!()
+	using PDFmerger: append_pdf!
+	CairoMakie.activate!()
 
-# delete current pdf if it doesn't exist
-rm(event_data_plot_location, force=true)
+	# delete current pdf if it doesn't exist
+	rm(event_data_plot_location, force=true)
 
-@showprogress for i ∈ 1:length(event_dictionaries)
-	df = event_dictionaries[i][:julia_data][:df]
-	df2 = DataFrame(collect(rand(event_dictionaries[i][:julia_data][:gmm],nrow(df))'), transformed_variable_names)
-	df2[!, :prior] .= 1.0
-	df2 = inverse(transformation, df2)
-	fig = compare_distributions(df[!, variable_names], df2[!, variable_names]; 
-							columns=latex_variable_names,
-							figsize=(1000,800))
-	Label(fig[1, 1, Top()], event_list[i], padding = (0, 0, 10, 0))
-	temp_dir = mktempdir() do dir
-		tempfile = joinpath(dir, "temp.pdf")
-		save(tempfile, fig)
-		append_pdf!(event_data_plot_location, tempfile, cleanup=true)
+	@showprogress for i ∈ 1:length(event_dictionaries)
+		df = event_dictionaries[i][:julia_data][:df]
+		df2 = DataFrame(collect(rand(event_dictionaries[i][:julia_data][:gmm],nrow(df))'), transformed_variable_names)
+		df2[!, :prior] .= 1.0
+		df2 = inverse(transformation, df2)
+		samples_to_show = minimum([nrow(df), nrow(df2), 8000])
+		df_inds = rand(1:nrow(df), samples_to_show)
+		df2_inds = rand(1:nrow(df2), samples_to_show)
+		fig = compare_distributions(df[df_inds, variable_names], df2[df2_inds, variable_names]; 
+								columns=latex_variable_names,
+								figsize=(1000,800))
+		Label(fig[1, 1, Top()], event_list[i], padding = (0, 0, 10, 0))
+		temp_dir = mktempdir() do dir
+			tempfile = joinpath(dir, "temp.pdf")
+			save(tempfile, fig)
+			append_pdf!(event_data_plot_location, tempfile, cleanup=true)
+		end
 	end
+
 end
-
-
 
 
 ################ SELECTION INJECTIONS ########################
@@ -253,7 +262,7 @@ b = [limit[2] for limit in limits]
 
 if "prefittransformation" ∉ keys(config_dict["selection"])
 	# Make an identity transformation	
-	transformation = RingDB.Transformation(
+	transformation = TruncatedGaussianMixtures.Transformation(
 		variable_names,
 		tuple,
 		variable_names,
@@ -272,7 +281,7 @@ else
 	forward_transformation = config_dict["selection"]["prefittransformation"]["transformation_function"] |> x->join(x,",") |> Meta.parse |> eval
 	inverse_transformation = config_dict["selection"]["prefittransformation"]["inverse_transformation_function"] |> x->join(x,",") |> Meta.parse |> eval
 
-	transformation = RingDB.Transformation(
+	transformation = TruncatedGaussianMixtures.Transformation(
 		variable_names,
 		forward_transformation,
 		transformed_variable_names,
@@ -312,20 +321,21 @@ save_dict_to_file(selection_data_output_location, the_dictionary)
 
 
 ################ DEBUG PLOTS #########################################
+if "selection_data_plots" in keys(conf._data["datasources"])
+	selection_data_plot_location = conf._data["datasources"]["selection_data_plots"][1][2:(end-1)]
+	CairoMakie.activate!()
 
-selection_data_plot_location = conf._data["datasources"]["selection_data_plots"][1][2:(end-1)]
-CairoMakie.activate!()
+	# delete current pdf if it doesn't exist
+	rm(selection_data_plot_location, force=true)
 
-# delete current pdf if it doesn't exist
-rm(selection_data_plot_location, force=true)
-
-
-df2 = DataFrame(collect(rand(mix, nrow(df))'), variable_names)
-fig = compare_distributions(selection_samples[rand(1:nrow(selection_samples), nrow(df)), variable_names], 
-							df2[!, variable_names]; 
-							columns=latex_variable_names,
-							figsize=(1000,800))
-
-save(selection_data_plot_location, fig)
+	samples_to_test = minimum([nrow(selection_samples), nrow(df), 8000])
 
 
+	df2 = DataFrame(collect(rand(mix, samples_to_test)'), variable_names)
+	fig = compare_distributions(selection_samples[rand(1:nrow(selection_samples), samples_to_test), variable_names], 
+								df2[!, variable_names]; 
+								columns=latex_variable_names,
+								figsize=(1000,800))
+
+	save(selection_data_plot_location, fig)
+end

@@ -39,7 +39,10 @@ class Parser:
 		for p in params:
 		    hyper_params += p
 		self.hyper_parameters = hyper_params
-		self.ignore_events = convert_to_list(self.config_dict['DataSources']['ignore_events'])
+		if 'ignore_events' in self.config_dict['DataSources'].keys():
+			self.ignore_events = convert_to_list(self.config_dict['DataSources']['ignore_events'])
+		else:
+			self.ignore_events = []
 		self.check_gradient = False
 		
 	def get_list_of_models(self, model_dict):
